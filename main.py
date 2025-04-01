@@ -30,7 +30,7 @@ for i, clique in enumerate(cliques, start=1):
 start2 = time.time()
 
 # Algoritmo di filtro per clique massimali L-isolated
-L=3 # Definisci il valore di isolamento L
+L=3     # Imposta il valore di isolamento L
 cliques_isolated = list(alg.filtra_clique_isolate(G, cliques, L)) # Filtra le clique massimali per mantenere solo quelle che sono L-isolated (L=3)
 
 # Salva time dopo aver fatto la ricerca delle clique massimali L-isolated
@@ -44,10 +44,10 @@ for i, clique in enumerate(cliques_isolated, start=1):
 # Stampa il numero di chiamate ricorsive
 print("\nNumero di chiamate ricorsive per l'algoritmo di ricerca: ", alg.chiamate_ricorsive)
 
-#Stampa il numero totale di clique massimali trovate
+# Stampa il numero totale di clique massimali trovate
 print("\nNumero totale di clique massimali trovate: ", len(cliques))
 
-#Stampa il numero totale di clique massimali L-isolated trovate
+# Stampa il numero totale di clique massimali L-isolated trovate
 print("\nNumero totale di clique massimali L-isolated trovate (con L=", L,"): ", len(cliques_isolated))
 
 # Stampa il tempo di esecuzione dell'algoritmo di ricerca
