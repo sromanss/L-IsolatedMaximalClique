@@ -124,17 +124,14 @@ def filtra_clique_isolate(G, cliques, L):
     # Filtra le clique massimali per mantenere solo quelle che sono L-isolated
     # G: Grafo originale
     # cliques: Lista delle clique massimali
-    # L : Valore di isolamento
+    # L: Valore di isolamento
     # return: Lista delle clique L-isolated
     
     clique_isolate = []
 
     for clique in cliques:
         k = len(clique)  # Numero di nodi nella clique
-        if k < 2:
-            # Una clique con meno di 2 nodi non può essere L-isolated
-            continue
-
+        
         # Calcola la somma dei gradi dei nodi nella clique
         S = sum(G.degree[node] for node in clique) 
 
