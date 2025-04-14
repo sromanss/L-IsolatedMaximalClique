@@ -2,14 +2,26 @@ import networkx as nx
 
 global chiamate_ricorsive      # Inizializzazione variabile globale per contare le chiamate ricorsive
 chiamate_ricorsive = 0
+global numero_tagli            # Inizializzazione variabile globale per contare i tagli
+numero_tagli = 0
             
-            
-            # *********************************************************************
-            # *                VERSIONE STANDARD DA NETWORKX                      *
-            # *********************************************************************
+
+# ************************************************************************************************************
+# *                     VERIFICA CHE DUE LISTE DI CLIQUES CONTENGANO LE STESSE CLIQUES                       *
+# ************************************************************************************************************
+def verifica_cliques_isolate(cliques1, cliques2):
+    
+    # Converte le clique in insiemi per ignorare l'ordine dei nodi
+    set_cliques1 = {frozenset(clique) for clique in cliques1}
+    set_cliques2 = {frozenset(clique) for clique in cliques2}
+
+    # Confronta i due insiemi
+    return set_cliques1 == set_cliques2
 
 
-# Passa come parametro il grafo e, opzionalmente, una clique; se fornita troverà tutte le clique massimali contenenti la clique data
+# ************************************************************************************************************
+# *                                ALGORITMO DI RICERCA STANDARD DA NETWORKX                                 *
+# ************************************************************************************************************
 def trova_clique_massimali(G, nodes=None):
     # Controlla se il grafo è vuoto
     if len(G) == 0:
@@ -69,12 +81,10 @@ def trova_clique_massimali(G, nodes=None):
     # Avvia l'espansione con il sottografo e i candidati iniziali
     return expand(subg_init, cand_init)
 
-            
-            # ************************************************************************
-            # *  VERSIONE ALTERNATIVA SENZA POSSIBILITA' DI FORNIRE CLIQUE INIZIALE  *
-            # ************************************************************************
 
-
+# ************************************************************************************************************
+# *                      VERSIONE ALTERNATIVA SENZA POSSIBILITA' DI FORNIRE CLIQUE INIZIALE                  *
+# ************************************************************************************************************
 def trova_clique_massimali2(G):
     # Controlla se il grafo è vuoto
     if len(G) == 0:
@@ -119,11 +129,10 @@ def trova_clique_massimali2(G):
     # Avvia l'espansione con il sottografo e i candidati iniziali
     return expand(cand_init, cand_init.copy(), [])
 
-           
-            # ************************************************************************
-            # *         ALGORITMO DI FILTRO PER CLIQUE MASSIMALI L-ISOLATED          *
-            # ************************************************************************
-            
+
+# ************************************************************************************************************
+# *                              ALGORITMO DI FILTRO PER TROVARE CLIQUES L-ISOLATED                          *
+# ************************************************************************************************************       
 def filtra_clique_isolate(G, cliques, L):
     
     # Filtra le clique massimali per mantenere solo quelle che sono L-isolated
@@ -152,13 +161,10 @@ def filtra_clique_isolate(G, cliques, L):
 
     return clique_isolate
 
-            
-            # ***********************************************************************************************
-            # *         ALGORITMO DI RICERCA E FILTRO PER CLIQUE MASSIMALI L-ISOLATED  (VERSIONE 1)         *
-            # *                               (con calcolo di AE(C))                                        *
-            # ***********************************************************************************************
 
-
+# ************************************************************************************************************
+# *                          ALGORITMO DI RICERCA DI CLIQUES L-ISOLATED CON CALCOLO DI AE(C)                 *
+# ************************************************************************************************************
 def trova_clique_massimali_L_isolated(G, L):
     # Controlla se il grafo è vuoto
     if len(G) == 0:
@@ -236,13 +242,11 @@ def trova_clique_massimali_L_isolated(G, L):
     # Restituisce la lista delle clique massimali L-isolated
     return clique_isolated
 
-            
-            # **********************************************************************************************************************************
-            # *                  ALGORITMO DI RICERCA E FILTRO PER CLIQUE MASSIMALI L-ISOLATED  (VERSIONE 2)                                   *
-            # *        (con calcolo dinamico di AE(C), aggiornando il valore somma dei gradi dei nodi in C quando ci si aggiunge v)            *
-            # **********************************************************************************************************************************
 
-
+# ************************************************************************************************************
+# *                      ALGORITMO DI RICERCA DI CLIQUES L-ISOLATED CON CALCOLO DINAMICO DI AE(C)            *
+# *                      (aggiorna il valore somma dei gradi dei nodi di C quando ci si aggiunge v)          *
+# ************************************************************************************************************
 def trova_clique_massimali_L_isolated2(G, L):
     # Controlla se il grafo è vuoto
     if len(G) == 0:
@@ -276,6 +280,8 @@ def trova_clique_massimali_L_isolated2(G, L):
 
         # Test per abortire la computazione
         if AE_C > L * (len(C) + len(P)):
+            global numero_tagli
+            numero_tagli += 1
             return
 
         # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
@@ -313,3 +319,97 @@ def trova_clique_massimali_L_isolated2(G, L):
 
     # Restituisce la lista delle clique massimali L-isolated
     return clique_isolated
+
+
+# ************************************************************************************************************
+# *                   ALGORITMO DI RICERCA DI CLIQUES L-ISOLATED CON EURISTICA PER CALCOLO DI D              *
+# *                       (e = 1 -> D = len(P); e = 2 -> D = 1 + grado_massimo_sottografoDiP)                *
+# ************************************************************************************************************
+def trova_clique_massimali_L_isolated3(G, L, euristica):
+    # Controlla se il grafo è vuoto
+    if len(G) == 0:
+        print("Il grafo è vuoto. Nessuna clique trovata.")
+        return []
+
+    # Crea un dizionario di adiacenza, dove ogni nodo è associato ai suoi vicini
+    adj = {u: set(G[u]) for u in G}
+
+    # Inizializza i candidati iniziali con tutti i nodi del grafo
+    candidati_iniziali = set(G)
+
+    # Lista per memorizzare le clique massimali L-isolated
+    clique_isolated = []
+
+    # Funzione per calcolare AE(C)
+    def calcola_AE(somma_gradi, archi_interni, archi_verso_P):
+        # Calcola AE(C) utilizzando i parametri aggiornati dinamicamente
+        return somma_gradi - archi_interni - archi_verso_P
+
+    # Funzione per calcolare D
+    def calcola_D(C, P, euristica):
+        if euristica == 1:
+            return len(P)
+        elif euristica == 2:
+            # Calcola il grafo indotto da P
+            sottografo = G.subgraph(P)
+            # Trova il grado massimo del grafo indotto
+            grado_massimo = max((sottografo.degree(v) for v in sottografo), default=0)
+            return 1 + grado_massimo
+        else:
+            raise ValueError("Euristica non valida per il calcolo di D.")
+
+    # Funzione ricorsiva per espandere le clique
+    def expand(C, P, X, somma_gradi):
+        global chiamate_ricorsive
+        chiamate_ricorsive += 1
+
+        # Calcola AE(C)
+        archi_interni = len(C) * (len(C) - 1)
+        archi_verso_P = sum(len(adj[u] & P) for u in C)
+        AE_C = calcola_AE(somma_gradi, archi_interni, archi_verso_P)
+
+        # Calcola D usando l'euristica specificata
+        D = calcola_D(C, P, euristica)
+
+        # Test per abortire la computazione
+        if AE_C > L * (len(C) + D):
+            global numero_tagli
+            numero_tagli += 1
+            return
+
+        # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
+        if P:
+            u = max(P, key=lambda x: len(P & adj[x]))
+        else:
+            u = None
+
+        # Itera sui nodi candidati che non sono vicini al pivot
+        for v in list(P - adj[u] if u else set()):
+            # Aggiorna i valori
+            new_C = C + [v]
+            new_P = P & adj[v]
+            new_X = X & adj[v]
+            new_somma_gradi = somma_gradi + G.degree[v]  # Aggiorna la somma dei gradi aggiungendo il grado di v
+
+            # Espande ricorsivamente
+            expand(new_C, new_P, new_X, new_somma_gradi)
+
+            # Sposta v da P a X
+            P.remove(v)
+            X.add(v)
+
+        # Se P e X sono vuoti, verifica se C è L-isolated
+        if not P and not X:
+            archi_interni_finale = len(C) * (len(C) - 1)
+            AE_C_finale = somma_gradi - archi_interni_finale  # Non ci sono più archi verso P quindi archi_verso_P = 0
+            # Se rispetta la condizione di isolamento, aggiungi C alla lista
+            if AE_C_finale <= len(C) * L:
+                clique_isolated.append(C)
+
+    # Avvia l'espansione con la lista vuota come clique corrente, candidati iniziali, lista vuota per i nodi esclusi e 0 come valore iniziale della somma dei gradi
+    expand([], candidati_iniziali, set(), 0)
+
+    # Restituisce la lista delle clique massimali L-isolated
+    return clique_isolated
+
+
