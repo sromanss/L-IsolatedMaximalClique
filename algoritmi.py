@@ -355,6 +355,14 @@ def trova_clique_massimali_L_isolated3(G, L, euristica):
             # Trova il grado massimo del grafo indotto
             grado_massimo = max((sottografo.degree(v) for v in sottografo), default=0)
             return 1 + grado_massimo
+        elif euristica == 3:
+            # Ordina i nodi di P in ordine decrescente di grado
+            gradi = sorted((G.degree[v] for v in P), reverse=True)
+            # Trova il massimo numero D di nodi che hanno grado >= D-1
+            for i, grado in enumerate(gradi, start=1):
+                if grado < i - 1:
+                    return i - 1
+            return len(gradi) # Se tutti i nodi soddisfano la condizione
         else:
             raise ValueError("Euristica non valida per il calcolo di D.")
 
@@ -371,8 +379,9 @@ def trova_clique_massimali_L_isolated3(G, L, euristica):
         # Calcola D usando l'euristica specificata
         D = calcola_D(C, P, euristica)
 
-        # Test per abortire la computazione
-        if AE_C > L * (len(C) + D):
+        # Test per abortire la computazione AE(C) + |C||P| - L|C| > D(L+|C|).
+        if AE_C + len(C)*len(P) - L*len(C) > D*(L + len(C)):
+        #if AE_C > L * (len(C) + D):
             global numero_tagli
             numero_tagli += 1
             return
