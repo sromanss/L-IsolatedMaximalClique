@@ -1,24 +1,9 @@
 import networkx as nx
 
-global chiamate_ricorsive      # Inizializzazione variabile globale per contare le chiamate ricorsive
+global chiamate_ricorsive, numero_tagli      
 chiamate_ricorsive = 0
-global numero_tagli            # Inizializzazione variabile globale per contare i tagli
-numero_tagli = 0
+numero_tagli = 0           
             
-
-# ************************************************************************************************************
-# *                     VERIFICA CHE DUE LISTE DI CLIQUES CONTENGANO LE STESSE CLIQUES                       *
-# ************************************************************************************************************
-def verifica_cliques_isolate(cliques1, cliques2):
-    
-    # Converte le clique in insiemi per ignorare l'ordine dei nodi
-    set_cliques1 = {frozenset(clique) for clique in cliques1}
-    set_cliques2 = {frozenset(clique) for clique in cliques2}
-
-    # Confronta i due insiemi
-    return set_cliques1 == set_cliques2
-
-
 # ************************************************************************************************************
 # *                                ALGORITMO DI RICERCA STANDARD DA NETWORKX                                 *
 # ************************************************************************************************************
@@ -163,169 +148,10 @@ def filtra_clique_isolate(G, cliques, L):
 
 
 # ************************************************************************************************************
-# *                          ALGORITMO DI RICERCA DI CLIQUES L-ISOLATED CON CALCOLO DI AE(C)                 *
-# ************************************************************************************************************
-def trova_clique_massimali_L_isolated(G, L):
-    # Controlla se il grafo è vuoto
-    if len(G) == 0:
-        print("Il grafo è vuoto. Nessuna clique trovata.")
-        return []
-
-    # Crea un dizionario di adiacenza, dove ogni nodo è associato ai suoi vicini
-    adj = {u: set(G[u]) for u in G}
-
-    # Inizializza i candidati iniziali con tutti i nodi del grafo
-    candidati_iniziali = set(G)
-
-    # Lista per memorizzare le clique massimali L-isolated
-    clique_isolated = []
-
-    # Funzione per calcolare AE(C)
-    def calcola_AE(C, P):
-        # Somma i gradi dei nodi in C
-        somma_gradi = sum(G.degree[u] for u in C)
-        # Sottrai gli archi interni a C
-        archi_interni = len(C) * (len(C) - 1)
-        # Sottrai gli archi che vanno verso P
-        # Per ogni nodo u nella clique corrente C, calcola il numero di vicini di u che si trovano in P
-        archi_verso_P = sum(len(adj[u] & P) for u in C)
-        # Calcola AE(C)
-        return somma_gradi - archi_interni - archi_verso_P
-
-    # Funzione ricorsiva per espandere le clique
-    # C: clique corrente; P: candidati; X: esclusi
-    def expand(C, P, X):
-        global chiamate_ricorsive
-        chiamate_ricorsive += 1
-
-        # Calcola AE(C) [Archi esterni di C]
-        AE_C = calcola_AE(C, P)
-
-        # Test per abortire la computazione
-        if AE_C > L * (len(C) + len(P)):
-            return
-
-        # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
-        if P:
-            u = max(P, key=lambda x: len(P & adj[x]))
-        # Se P è vuoto, non c'è un nodo pivot
-        else:
-            u = None
-
-        # Itera sui nodi candidati che non sono vicini al pivot 
-        for v in list(P - (adj[u] if u else set())):
-            # Aggiorna C, P e X
-            # Aggiunge v alla clique corrente
-            new_C = C + [v]
-            # Rimuove v dai candidati e ci lascia solamente i suoi vicini intersecati a P
-            new_P = P & adj[v]
-            # Aggiorna X con i nodi esclusi
-            new_X = X & adj[v]
-
-            # Espande ricorsivamente
-            expand(new_C, new_P, new_X)
-
-            # Sposta v da P a X
-            P.remove(v)
-            X.add(v)
-
-        # Se P e X sono vuoti, verifica se C è L-isolated
-        if not P and not X:
-            AE_C_finale = calcola_AE(C, set())
-            # Se rispetta la condizione di isolamento, aggiungi C alla lista
-            if AE_C_finale <= len(C) * L:
-                clique_isolated.append(C)
-
-    # Avvia l'espansione con la lista vuota come clique corrente, candidati iniziali e lista vuota per i nodi esclusi
-    expand([], candidati_iniziali, set())
-
-    # Restituisce la lista delle clique massimali L-isolated
-    return clique_isolated
-
-
-# ************************************************************************************************************
-# *                      ALGORITMO DI RICERCA DI CLIQUES L-ISOLATED CON CALCOLO DINAMICO DI AE(C)            *
-# *                      (aggiorna il valore somma dei gradi dei nodi di C quando ci si aggiunge v)          *
-# ************************************************************************************************************
-def trova_clique_massimali_L_isolated2(G, L):
-    # Controlla se il grafo è vuoto
-    if len(G) == 0:
-        print("Il grafo è vuoto. Nessuna clique trovata.")
-        return []
-
-    # Crea un dizionario di adiacenza, dove ogni nodo è associato ai suoi vicini
-    adj = {u: set(G[u]) for u in G}
-
-    # Inizializza i candidati iniziali con tutti i nodi del grafo
-    candidati_iniziali = set(G)
-
-    # Lista per memorizzare le clique massimali L-isolated
-    clique_isolated = []
-
-    # Funzione per calcolare AE(C)
-    def calcola_AE(somma_gradi, archi_interni, archi_verso_P):
-        # Calcola AE(C) utilizzando i parametri aggiornati dinamicamente
-        return somma_gradi - archi_interni - archi_verso_P
-
-    # Funzione ricorsiva per espandere le clique
-    # C: clique corrente; P: candidati; X: esclusi; somma_gradi: somma dei gradi dei nodi in C
-    def expand(C, P, X, somma_gradi):
-        global chiamate_ricorsive
-        chiamate_ricorsive += 1
-
-        # Calcola AE(C) 
-        archi_interni = len(C) * (len(C) - 1)
-        archi_verso_P = sum(len(adj[u] & P) for u in C)
-        AE_C = calcola_AE(somma_gradi, archi_interni, archi_verso_P)
-
-        # Test per abortire la computazione
-        if AE_C > L * (len(C) + len(P)):
-            global numero_tagli
-            numero_tagli += 1
-            return
-
-        # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
-        if P:
-            u = max(P, key=lambda x: len(P & adj[x]))
-        else:
-            u = None
-
-        # Itera sui nodi candidati che non sono vicini al pivot
-        for v in list(P - adj[u] if u else set()):
-            # Aggiorna i valori
-            new_C = C + [v]
-            new_P = P & adj[v]
-            new_X = X & adj[v]
-            new_somma_gradi = somma_gradi + G.degree[v]  # Aggiorna la somma dei gradi aggiungendo il grado di v
-        
-            # Espande ricorsivamente
-            expand(new_C, new_P, new_X, new_somma_gradi)
-
-            # Sposta v da P a X
-            P.remove(v)
-            X.add(v)
-
-        # Se P e X sono vuoti, verifica se C è L-isolated
-        if not P and not X:
-            archi_interni_finale = len(C) * (len(C) - 1)
-            AE_C_finale = somma_gradi - archi_interni_finale  # Non ci sono più archi verso P quindi archi_verso_P = 0
-            # Se rispetta la condizione di isolamento, aggiungi C alla lista
-            if AE_C_finale <= len(C) * L:
-                clique_isolated.append(C)
-
-    
-    # Avvia l'espansione con la lista vuota come clique corrente, candidati iniziali, lista vuota per i nodi esclusi e 0 come valore iniziale della somma dei gradi
-    expand([], candidati_iniziali, set(), 0)
-
-    # Restituisce la lista delle clique massimali L-isolated
-    return clique_isolated
-
-
-# ************************************************************************************************************
 # *                   ALGORITMO DI RICERCA DI CLIQUES L-ISOLATED CON EURISTICA PER CALCOLO DI D              *
-# *                       (e = 1 -> D = len(P); e = 2 -> D = 1 + grado_massimo_sottografoDiP)                *
+# *     (e = 1 -> D = len(P); e = 2 -> D = 1 + grado_massimo_sottografoDiP; e = 3 -> maxGradiOrdinati)       *
 # ************************************************************************************************************
-def trova_clique_massimali_L_isolated3(G, L, euristica):
+def trova_clique_massimali_L_isolated(G, L, euristica):
     # Controlla se il grafo è vuoto
     if len(G) == 0:
         print("Il grafo è vuoto. Nessuna clique trovata.")
@@ -422,3 +248,163 @@ def trova_clique_massimali_L_isolated3(G, L, euristica):
     return clique_isolated
 
 
+# ************************************************************************************************************
+# *           ALGORITMO DI RICERCA DI CLIQUES L-ISOLATED CON EURISTICA PER CALCOLO DI D (versione 2)         *
+# ************************************************************************************************************
+def trova_clique_massimali_L_isolated2(G, L, euristica):
+    # Controlla se il grafo è vuoto
+    if len(G) == 0:
+        print("Il grafo è vuoto. Nessuna clique trovata.")
+        return []
+    
+    # Crea un dizionario di adiacenza, dove ogni nodo è associato ai suoi vicini
+    adj = {u: set(G[u]) for u in G}
+
+    # Inizializza i candidati iniziali con tutti i nodi del grafo
+    candidati_iniziali = set(G)
+
+    # Lista per memorizzare le clique massimali L-isolated
+    clique_isolated = []
+
+    # Funzione per calcolare AE(C)
+    def calcola_AE(somma_gradi, archi_interni, archi_verso_P):
+        # Calcola AE(C) utilizzando i parametri aggiornati dinamicamente
+        return somma_gradi - archi_interni - archi_verso_P
+
+    # Funzione per calcolare D
+    def calcola_D(C, P, euristica, sottografo):
+        #if euristica == 1:
+        #    return len(P)
+        if euristica == 2:
+            # Calcola il grafo indotto da P
+            #sottografo = G.subgraph(P)
+            # Trova il grado massimo del grafo indotto
+            grado_massimo = max((sottografo.degree(v) for v in P), default=0)
+            return 1 + grado_massimo
+        elif euristica == 3:
+            # Ordina i nodi del sottografo in ordine decrescente di grado
+            gradi = sorted((sottografo.degree[v] for v in P), reverse=True)
+            #gradi = sorted((G.degree[v] for v in P), reverse=True)
+            # Trova il massimo numero D di nodi che hanno grado >= D-1
+            for i, grado in enumerate(gradi, start=1):
+                if grado < i - 1:
+                    return i - 1
+            return len(gradi) # Se tutti i nodi soddisfano la condizione
+        else:
+            raise ValueError("Euristica non valida per il calcolo di D.")
+    
+    def expand_simple(C, P, X, somma_gradi):
+        global chiamate_ricorsive
+        chiamate_ricorsive += 1
+
+        # Calcola AE(C)
+        archi_interni = len(C) * (len(C) - 1)
+        archi_verso_P = sum(len(adj[u] & P) for u in C)
+        AE_C = calcola_AE(somma_gradi, archi_interni, archi_verso_P)
+        
+        D = len(P)  
+
+        if AE_C + len(C)*len(P) - L*len(C) > D*(L + len(C)):
+            #global numero_tagli
+            #numero_tagli += 1
+            return
+
+        # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
+        if P:
+            u = max(P, key=lambda x: len(P & adj[x]))
+        else:
+            u = None
+
+        # Itera sui nodi candidati che non sono vicini al pivot
+        for v in list(P - adj[u] if u else set()):
+            # Aggiorna i valori
+            new_C = C + [v]
+            new_P = P & adj[v]
+            new_X = X & adj[v]
+            new_somma_gradi = somma_gradi + G.degree[v]  # Aggiorna la somma dei gradi aggiungendo il grado di v
+
+            # Espande ricorsivamente
+            expand_simple(new_C, new_P, new_X, new_somma_gradi)
+
+            # Sposta v da P a X
+            P.remove(v)
+            X.add(v)
+
+        # Se P e X sono vuoti, verifica se C è L-isolated
+        if not P and not X:
+            archi_interni_finale = len(C) * (len(C) - 1)
+            AE_C_finale = somma_gradi - archi_interni_finale  # Non ci sono più archi verso P quindi archi_verso_P = 0
+            # Se rispetta la condizione di isolamento, aggiungi C alla lista
+            if AE_C_finale <= len(C) * L:
+                clique_isolated.append(C)
+    
+    # Funzione ricorsiva per espandere le clique
+    def expand(C, P, X, somma_gradi, sottografo):
+        global chiamate_ricorsive
+        chiamate_ricorsive += 1
+
+        # Calcola AE(C)
+        archi_interni = len(C) * (len(C) - 1)
+        archi_verso_P = sum(len(adj[u] & P) for u in C)
+        AE_C = calcola_AE(somma_gradi, archi_interni, archi_verso_P)
+
+        # Calcola D usando l'euristica specificata
+        D = calcola_D(C, P, euristica, sottografo)
+        
+        # Test per abortire la computazione AE(C) + |C||P| - L|C| > D(L+|C|).
+        if AE_C + len(C)*len(P) - L*len(C) > D*(L + len(C)):
+            #global numero_tagli
+            #numero_tagli += 1
+            return
+
+        # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
+        if P:
+            u = max(P, key=lambda x: len(P & adj[x]))
+        else:
+            u = None
+
+        # Itera sui nodi candidati che non sono vicini al pivot
+        for v in list(P - adj[u] if u else set()):
+            # Aggiorna i valori
+            new_C = C + [v]
+            new_P = P & adj[v]
+            new_X = X & adj[v]
+            new_somma_gradi = somma_gradi + G.degree[v]  # Aggiorna la somma dei gradi aggiungendo il grado di v
+            new_sottografo = sottografo.subgraph(new_P)  # Aggiorna il sottografo indotto
+            # Espande ricorsivamente
+            expand(new_C, new_P, new_X, new_somma_gradi, new_sottografo)
+
+            # Sposta v da P a X
+            P.remove(v)
+            X.add(v)
+
+        # Se P e X sono vuoti, verifica se C è L-isolated
+        if not P and not X:
+            archi_interni_finale = len(C) * (len(C) - 1)
+            AE_C_finale = somma_gradi - archi_interni_finale  # Non ci sono più archi verso P quindi archi_verso_P = 0
+            # Se rispetta la condizione di isolamento, aggiungi C alla lista
+            if AE_C_finale <= len(C) * L:
+                clique_isolated.append(C)
+
+    # In base al valore dell'euristica, chiama la funzione di espansione appropriata
+    if (euristica == 1):
+        expand_simple([], candidati_iniziali, set(), 0)
+    else:
+        sottografo_iniziale = G.subgraph(candidati_iniziali)
+        expand([], candidati_iniziali, set(), 0, sottografo_iniziale)
+
+    # Restituisce la lista delle clique massimali L-isolated
+    return clique_isolated
+
+
+# ************************************************************************************************************
+# *                     VERIFICA CHE DUE LISTE DI CLIQUES CONTENGANO LE STESSE CLIQUES                       *
+# ************************************************************************************************************
+def verifica_cliques_isolate(cliques1, cliques2):
+    
+    # Converte le clique in insiemi per ignorare l'ordine dei nodi
+    set_cliques1 = {frozenset(clique) for clique in cliques1}
+    set_cliques2 = {frozenset(clique) for clique in cliques2}
+
+    # Confronta i due insiemi
+    return set_cliques1 == set_cliques2
