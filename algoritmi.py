@@ -1,8 +1,6 @@
 import networkx as nx
 
-global chiamate_ricorsive, numero_tagli      
-chiamate_ricorsive = 0
-numero_tagli = 0           
+           
             
 # ************************************************************************************************************
 # *                                ALGORITMO DI RICERCA STANDARD DA NETWORKX                                 *
@@ -152,6 +150,10 @@ def filtra_clique_isolate(G, cliques, L):
 # *     (e = 1 -> D = len(P); e = 2 -> D = 1 + grado_massimo_sottografoDiP; e = 3 -> maxGradiOrdinati)       *
 # ************************************************************************************************************
 def trova_clique_massimali_L_isolated(G, L, euristica):
+
+    # Contatore locale per le chiamate ricorsive
+    num_chiamate = 0
+
     # Controlla se il grafo è vuoto
     if len(G) == 0:
         print("Il grafo è vuoto. Nessuna clique trovata.")
@@ -194,8 +196,8 @@ def trova_clique_massimali_L_isolated(G, L, euristica):
 
     # Funzione ricorsiva per espandere le clique
     def expand(C, P, X, somma_gradi):
-        global chiamate_ricorsive
-        chiamate_ricorsive += 1
+        nonlocal num_chiamate
+        num_chiamate += 1
 
         # Calcola AE(C)
         archi_interni = len(C) * (len(C) - 1)
@@ -208,8 +210,6 @@ def trova_clique_massimali_L_isolated(G, L, euristica):
         # Test per abortire la computazione AE(C) + |C||P| - L|C| > D(L+|C|).
         if AE_C + len(C)*len(P) - L*len(C) > D*(L + len(C)):
         #if AE_C > L * (len(C) + D):
-            global numero_tagli
-            numero_tagli += 1
             return
 
         # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
@@ -245,13 +245,17 @@ def trova_clique_massimali_L_isolated(G, L, euristica):
     expand([], candidati_iniziali, set(), 0)
 
     # Restituisce la lista delle clique massimali L-isolated
-    return clique_isolated
+    return clique_isolated, num_chiamate
 
 
 # ************************************************************************************************************
 # *           ALGORITMO DI RICERCA DI CLIQUES L-ISOLATED CON EURISTICA PER CALCOLO DI D (versione 2)         *
 # ************************************************************************************************************
 def trova_clique_massimali_L_isolated2(G, L, euristica):
+    
+    # Contatore locale per le chiamate ricorsive
+    num_chiamate = 0
+
     # Controlla se il grafo è vuoto
     if len(G) == 0:
         print("Il grafo è vuoto. Nessuna clique trovata.")
@@ -276,15 +280,12 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
         #if euristica == 1:
         #    return len(P)
         if euristica == 2:
-            # Calcola il grafo indotto da P
-            #sottografo = G.subgraph(P)
             # Trova il grado massimo del grafo indotto
             grado_massimo = max((sottografo.degree(v) for v in P), default=0)
             return 1 + grado_massimo
         elif euristica == 3:
             # Ordina i nodi del sottografo in ordine decrescente di grado
             gradi = sorted((sottografo.degree[v] for v in P), reverse=True)
-            #gradi = sorted((G.degree[v] for v in P), reverse=True)
             # Trova il massimo numero D di nodi che hanno grado >= D-1
             for i, grado in enumerate(gradi, start=1):
                 if grado < i - 1:
@@ -294,8 +295,8 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
             raise ValueError("Euristica non valida per il calcolo di D.")
     
     def expand_simple(C, P, X, somma_gradi):
-        global chiamate_ricorsive
-        chiamate_ricorsive += 1
+        nonlocal num_chiamate
+        num_chiamate += 1
 
         # Calcola AE(C)
         archi_interni = len(C) * (len(C) - 1)
@@ -305,8 +306,6 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
         D = len(P)  
 
         if AE_C + len(C)*len(P) - L*len(C) > D*(L + len(C)):
-            #global numero_tagli
-            #numero_tagli += 1
             return
 
         # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
@@ -340,8 +339,8 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
     
     # Funzione ricorsiva per espandere le clique
     def expand(C, P, X, somma_gradi, sottografo):
-        global chiamate_ricorsive
-        chiamate_ricorsive += 1
+        nonlocal num_chiamate
+        num_chiamate += 1
 
         # Calcola AE(C)
         archi_interni = len(C) * (len(C) - 1)
@@ -353,8 +352,6 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
         
         # Test per abortire la computazione AE(C) + |C||P| - L|C| > D(L+|C|).
         if AE_C + len(C)*len(P) - L*len(C) > D*(L + len(C)):
-            #global numero_tagli
-            #numero_tagli += 1
             return
 
         # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
@@ -370,7 +367,10 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
             new_P = P & adj[v]
             new_X = X & adj[v]
             new_somma_gradi = somma_gradi + G.degree[v]  # Aggiorna la somma dei gradi aggiungendo il grado di v
-            new_sottografo = sottografo.subgraph(new_P)  # Aggiorna il sottografo indotto
+            #new_sottografo = sottografo.subgraph(new_P)
+            new_sottografo = G.subgraph(new_P) 
+            #new_sottografo = G.subgraph(new_P).copy()  # Aggiorna il sottografo indotto
+            
             # Espande ricorsivamente
             expand(new_C, new_P, new_X, new_somma_gradi, new_sottografo)
 
@@ -390,11 +390,12 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
     if (euristica == 1):
         expand_simple([], candidati_iniziali, set(), 0)
     else:
-        sottografo_iniziale = G.subgraph(candidati_iniziali)
+        sottografo_iniziale = G.subgraph(candidati_iniziali)  
+        #sottografo_iniziale = G.subgraph(candidati_iniziali).copy()
         expand([], candidati_iniziali, set(), 0, sottografo_iniziale)
 
     # Restituisce la lista delle clique massimali L-isolated
-    return clique_isolated
+    return clique_isolated, num_chiamate
 
 
 # ************************************************************************************************************
