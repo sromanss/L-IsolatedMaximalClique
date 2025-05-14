@@ -36,13 +36,18 @@ def esegui_test(percorso_grafo, valori_L, euristiche, ripetizioni, cartella_outp
                 
                 # Esegui più volte per calcolare la media
                 for i in range(ripetizioni):
-                    #print(f"  Ripetizione {i+1}/{ripetizioni}")
                     
                     # Misura il tempo di esecuzione
                     inizio = time.time()
                     
-                    # Esegui l'algoritmo
-                    clique_isolate, num_chiamate = alg.trova_clique_massimali_L_isolated2(G, L, euristica)
+                    if euristica == 0:
+                        # Approccio trova e filtra
+                        cliques, num_chiamate = alg.trova_clique_massimali2(G)
+                        clique_isolate = alg.filtra_clique_isolate(G, cliques, L)
+                    else:
+                        # Approccio con euristiche
+                        clique_isolate, num_chiamate = alg.trova_clique_massimali_L_isolated2(G, L, euristica)
+                    
                     
                     # Registra il tempo
                     fine = time.time()
@@ -133,39 +138,58 @@ def crea_grafici(file_csv, cartella_output, percorso_grafo):
 
     # Intestazioni prima tabella (Tempi)
     ws_data[f'A{row_start+1}'] = 'L'
-    ws_data[f'B{row_start+1}'] = 'Euristica 1'
-    ws_data[f'C{row_start+1}'] = 'Euristica 2'
-    ws_data[f'D{row_start+1}'] = 'Euristica 3'
+    ws_data[f'B{row_start+1}'] = 'Euristica 0'
+    ws_data[f'C{row_start+1}'] = 'Euristica 1'
+    ws_data[f'D{row_start+1}'] = 'Euristica 2'
+    ws_data[f'E{row_start+1}'] = 'Euristica 3'
+    ws_data[f'F{row_start+1}'] = 'Euristica 4'
     
     # Applica il grassetto alle intestazioni
-    for col in range(1, 5):
+    for col in range(1, 7):
         ws_data[f'{chr(64+col)}{row_start+1}'].font = Font(bold=True)
 
     # Riempi la prima tabella (Tempi)
     row = row_start + 2
     for L in L_unici:
         ws_data[f'A{row}'] = L
-        for i, e in enumerate(euristiche_uniche, start=1):
+        for i, e in enumerate(euristiche_uniche):
             ws_data[f'{chr(65+i)}{row}'] = dati_organizzati[L][e]['tempo']
         row += 1
 
     # Intestazioni seconda tabella (Chiamate ricorsive)
-    col_offset = 5
+    col_offset = 8
     ws_data[f'{chr(65+col_offset)}{row_start+1}'] = 'L'
-    ws_data[f'{chr(65+col_offset+1)}{row_start+1}'] = 'Euristica 1'
-    ws_data[f'{chr(65+col_offset+2)}{row_start+1}'] = 'Euristica 2'
-    ws_data[f'{chr(65+col_offset+3)}{row_start+1}'] = 'Euristica 3'
+    for i, e in enumerate(euristiche_uniche):
+        ws_data[f'{chr(65+col_offset+1+i)}{row_start+1}'] = f'Euristica {e}'
 
     # Applica il grassetto alle intestazioni della seconda tabella
-    for col in range(col_offset, col_offset+4):
+    for col in range(col_offset, col_offset+len(euristiche_uniche)+1):
         ws_data[f'{chr(65+col)}{row_start+1}'].font = Font(bold=True)
 
     # Riempi la seconda tabella (Chiamate ricorsive)
     row = row_start + 2
     for L in L_unici:
         ws_data[f'{chr(65+col_offset)}{row}'] = L
-        for i, e in enumerate(euristiche_uniche, start=1):
+        for i, e in enumerate(euristiche_uniche):
             ws_data[f'{chr(65+col_offset+i)}{row}'] = dati_organizzati[L][e]['chiamate']
+        row += 1
+    
+     # Intestazioni terza tabella (Clique trovate)
+    col_offset = 16  # Aumentato offset per la nuova tabella
+    ws_data[f'{chr(65+col_offset)}{row_start+1}'] = 'L'
+    for i, e in enumerate(euristiche_uniche):
+        ws_data[f'{chr(65+col_offset+1+i)}{row_start+1}'] = f'Euristica {e}'
+
+    # Applica il grassetto alle intestazioni della terza tabella
+    for col in range(col_offset, col_offset+len(euristiche_uniche)+1):
+        ws_data[f'{chr(65+col)}{row_start+1}'].font = Font(bold=True)
+
+    # Riempi la terza tabella (Clique trovate)
+    row = row_start + 2
+    for L in L_unici:
+        ws_data[f'{chr(65+col_offset)}{row}'] = L
+        for i, e in enumerate(euristiche_uniche):
+            ws_data[f'{chr(65+col_offset+1+i)}{row}'] = dati_organizzati[L][e]['clique']
         row += 1
     
     # Salva il file Excel
@@ -189,24 +213,41 @@ def crea_grafici(file_csv, cartella_output, percorso_grafo):
 
 if __name__ == "__main__":
     
-    # Percorsi dei grafi da testare
-
-    #grafo = "C:/Users/simon/Downloads/out.ucidata-zachary"                         #n=34, m=78
-    grafo = "C:/Users/simon/Downloads/out.subelj_euroroad_euroroad"                #n=1174, m=1417
-    #grafo = "C:/Users/simon/Downloads/out.petster-hamster-household"               #n=921, m=4032
-    #grafo = "C:/Users/simon/Downloads/out.opsahl-powergrid"                        #n=4941, m=6594
-    #grafo = "C:/Users/simon/Downloads/out.loc-brightkite_edges"                    #n=58228, m=214078
-            
-    
     # Parametri da testare
+    grafi = [
+        #"C:/Users/simon/Downloads/out.ucidata-zachary",                         #n=34, m=78
+        #"C:/Users/simon/Downloads/out.subelj_euroroad_euroroad",                #n=1174, m=1417
+        #"C:/Users/simon/Downloads/out.petster-hamster-household",               #n=921, m=4032
+        #"C:/Users/simon/Downloads/out.opsahl-powergrid",                        #n=4941, m=6594
+        #"C:/Users/simon/Downloads/out.loc-brightkite_edges",                    #n=58228, m=214078
+        #"C:/Users/simon/Downloads/out.petster-cat-household",                   #n=105138, m=494858
+        #"C:/Users/simon/Downloads/out.loc-gowalla_edges",                       #196591, m=950327
+        #"C:/Users/simon/Downloads/out.livemocha",                               #n=104103, m=2193083
+        "C:/Users/simon/Downloads/out.petster-dog-household",                   #n=260390, m=2148179
+        "C:/Users/simon/Downloads/out.roadNet-CA"                              #n=1965206, m=2766366
+    ]
     valori_L = list(range(1, 11)) + [20, 30]   # Valori di L da testare
-    euristiche = [1, 2, 3]
+    euristiche = [0, 1, 2, 3, 4]
     
-    # Esegui i test
-    esegui_test(
-        percorso_grafo=grafo,
-        valori_L=valori_L,
-        euristiche=euristiche,
-        ripetizioni=100,
-        cartella_output="risultati_test"
-    )
+    # Ciclo su tutti i grafi
+    for grafo in grafi:
+        print("\n" + "="*80)
+        print(f"Iniziando test su grafo: {get_graph_name(grafo)}")
+        print("="*80 + "\n")
+        
+        try:
+            # Esegui i test
+            esegui_test(
+                percorso_grafo=grafo,
+                valori_L=valori_L,
+                euristiche=euristiche,
+                ripetizioni=10,
+                cartella_output="risultati_test"
+            )
+        except Exception as e:
+            print(f"Errore durante l'elaborazione del grafo {get_graph_name(grafo)}:")
+            print(f"  {str(e)}")
+            print("Passando al grafo successivo...\n")
+            continue
+            
+        print(f"\nCompletato test su grafo: {get_graph_name(grafo)}\n")

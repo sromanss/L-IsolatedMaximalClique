@@ -69,6 +69,7 @@ def trova_clique_massimali(G, nodes=None):
 # *                      VERSIONE ALTERNATIVA SENZA POSSIBILITA' DI FORNIRE CLIQUE INIZIALE                  *
 # ************************************************************************************************************
 def trova_clique_massimali2(G):
+    num_chiamate = 0  # Contatore locale per le chiamate ricorsive
     # Controlla se il grafo è vuoto
     if len(G) == 0:
         print("Il grafo è vuoto. Nessuna clique trovata.")
@@ -82,8 +83,9 @@ def trova_clique_massimali2(G):
 
     # Funzione ricorsiva per espandere le clique
     def expand(subg, cand, Q):
-        global chiamate_ricorsive     # Dichiarazione globale per accedere alla variabile e modificarla
-        chiamate_ricorsive += 1       # Incrementa il contatore 
+        nonlocal num_chiamate
+        num_chiamate += 1  # Incrementa il contatore delle chiamate ricorsive
+        
         # Sceglie un nodo pivot con il massimo numero di vicini in comune con cand
         u = max(subg, key=lambda u: len(cand & adj[u]))
         
@@ -109,8 +111,11 @@ def trova_clique_massimali2(G):
             # Rimuove q dalla clique corrente (backtracking)
             Q.pop()
 
+    # Ottieni le clique e converti il generatore in lista
+    cliques = list(expand(cand_init, cand_init.copy(), []))
+
     # Avvia l'espansione con il sottografo e i candidati iniziali
-    return expand(cand_init, cand_init.copy(), [])
+    return cliques, num_chiamate
 
 
 # ************************************************************************************************************
@@ -191,6 +196,7 @@ def trova_clique_massimali_L_isolated(G, L, euristica):
                 if grado < i - 1:
                     return i - 1
             return len(gradi) # Se tutti i nodi soddisfano la condizione
+        
         else:
             raise ValueError("Euristica non valida per il calcolo di D.")
 
@@ -276,21 +282,45 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
         return somma_gradi - archi_interni - archi_verso_P
 
     # Funzione per calcolare D
-    def calcola_D(C, P, euristica, sottografo):
-        #if euristica == 1:
-        #    return len(P)
-        if euristica == 2:
+    def calcola_D(C, P, euristica):
+        if euristica == 1:
+            return len(P)
+        elif euristica == 2:
             # Trova il grado massimo del grafo indotto
-            grado_massimo = max((sottografo.degree(v) for v in P), default=0)
-            return 1 + grado_massimo
+            # grado_massimo = max((sottografo.degree(v) for v in P), default=0)
+            grado_massimo = max((G.degree(v) for v in P), default=0) 
+            #return grado_massimo - len(C)
+            return grado_massimo + 1
         elif euristica == 3:
             # Ordina i nodi del sottografo in ordine decrescente di grado
-            gradi = sorted((sottografo.degree[v] for v in P), reverse=True)
+            # gradi = sorted((sottografo.degree[v] for v in P), reverse=True)
+            gradi = sorted((G.degree[v] for v in P), reverse=True)
             # Trova il massimo numero D di nodi che hanno grado >= D-1
             for i, grado in enumerate(gradi, start=1):
-                if grado < i - 1:
+                #if grado < i - 1:
+                if grado - len(C) < i - 1:
                     return i - 1
             return len(gradi) # Se tutti i nodi soddisfano la condizione
+        elif euristica==4:
+            # 4.1) Creo una lista L con tanti elementi quanti i nodi di P, che contiene per ogni nodo di P, il grado del nodo (in G) meno len(C)
+            L = [G.degree[v] - len(C) for v in P]
+            if not L:  # Se P è vuoto
+                return 0
+            # 4.2) Mi calcolo il grado massimo nella lista sopra e creo un array di contatori C[grado] indicizzato sul grado dei nodi e inizializzato con zeri.
+            grado_max = max(L)
+            C = [0] * (grado_max + 1)  # +1 per includere lo zero
+            # 4.3) Itero sulla lista L dei gradi e incremento il contatore C[grado] in base al grado del nodo corrente.
+            for grado in L:
+                C[grado] += 1   
+            # 4.4)  Itero sui contatori al contrario (partendo dal contatore del grado massimo) e sommo il numero dei nodi trovati fino ad adesso
+            # All'inizio considero grado=gradoMax e somma=C[gradoMax]
+            somma = C[grado_max]
+            for grado in range(grado_max-1, -1, -1): #inizia da grado_max-1 fino a 0, decrementando di 1
+                # Se il grado_corrente < somma-1 allora ritorno somma all'iterazione precedente 
+                if grado < somma - 1:
+                    return somma
+                somma += C[grado]
+            return somma
         else:
             raise ValueError("Euristica non valida per il calcolo di D.")
     
@@ -303,7 +333,7 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
         archi_verso_P = sum(len(adj[u] & P) for u in C)
         AE_C = calcola_AE(somma_gradi, archi_interni, archi_verso_P)
         
-        D = len(P)  
+        D = calcola_D(C, P, euristica)  # D è uguale alla lunghezza di P
 
         if AE_C + len(C)*len(P) - L*len(C) > D*(L + len(C)):
             return
@@ -386,13 +416,14 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
             if AE_C_finale <= len(C) * L:
                 clique_isolated.append(C)
 
+    expand_simple([], candidati_iniziali, set(), 0)
     # In base al valore dell'euristica, chiama la funzione di espansione appropriata
-    if (euristica == 1):
-        expand_simple([], candidati_iniziali, set(), 0)
-    else:
-        sottografo_iniziale = G.subgraph(candidati_iniziali)  
-        #sottografo_iniziale = G.subgraph(candidati_iniziali).copy()
-        expand([], candidati_iniziali, set(), 0, sottografo_iniziale)
+    #if (euristica == 1):
+    #    expand_simple([], candidati_iniziali, set(), 0)
+    #else:
+    #    sottografo_iniziale = G.subgraph(candidati_iniziali)  
+    #    #sottografo_iniziale = G.subgraph(candidati_iniziali).copy()
+    #    expand([], candidati_iniziali, set(), 0, sottografo_iniziale)
 
     # Restituisce la lista delle clique massimali L-isolated
     return clique_isolated, num_chiamate
