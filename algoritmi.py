@@ -83,14 +83,14 @@ def trova_clique_massimali2(G):
 
     # Funzione ricorsiva per espandere le clique
     def expand(subg, cand, Q):
-        nonlocal num_chiamate
-        num_chiamate += 1  # Incrementa il contatore delle chiamate ricorsive
         
         # Sceglie un nodo pivot con il massimo numero di vicini in comune con cand
         u = max(subg, key=lambda u: len(cand & adj[u]))
         
         # Itera sui nodi candidati che non sono vicini al pivot
         for q in list(cand - adj[u]):  # Usa una copia per evitare modifiche durante l'iterazione
+            nonlocal num_chiamate
+            num_chiamate += 1  # Conta la chiamata alla funzione
             # Rimuove il nodo q dai candidati
             cand.remove(q)
             # Aggiunge q alla clique corrente
@@ -289,8 +289,7 @@ def trova_clique_massimali_L_isolated2(G, L, euristica):
             # Trova il grado massimo del grafo indotto
             # grado_massimo = max((sottografo.degree(v) for v in P), default=0)
             grado_massimo = max((G.degree(v) for v in P), default=0) 
-            #return grado_massimo - len(C)
-            return grado_massimo + 1
+            return min(max(0, grado_massimo - len(C) + 1), len(P))
         elif euristica == 3:
             # Ordina i nodi del sottografo in ordine decrescente di grado
             # gradi = sorted((sottografo.degree[v] for v in P), reverse=True)
@@ -440,3 +439,59 @@ def verifica_cliques_isolate(cliques1, cliques2):
 
     # Confronta i due insiemi
     return set_cliques1 == set_cliques2
+
+# ************************************************************************************************************
+# ************************************************************************************************************
+
+def trova_clique_massimali3(G):
+    # Contatore per le chiamate ricorsive
+    num_chiamate = 0
+
+    # Controlla se il grafo è vuoto
+    if len(G) == 0:
+        print("Il grafo è vuoto. Nessuna clique trovata.")
+        return [], 0
+
+    # Crea un dizionario di adiacenza, dove ogni nodo è associato ai suoi vicini
+    adj = {u: set(G[u]) for u in G}
+
+    # Inizializza i candidati iniziali con tutti i nodi del grafo
+    candidati_iniziali = set(G)
+
+    # Lista per memorizzare le clique massimali
+    clique_massimali = []
+
+    # Funzione ricorsiva per espandere le clique (algoritmo Bron-Kerbosch)
+    def expand(C, P, X):
+        nonlocal num_chiamate
+        num_chiamate += 1  # Incrementa il contatore delle chiamate ricorsive
+
+         # Sceglie un nodo pivot con il massimo numero di vicini in comune con P
+        if P:
+            u = max(P, key=lambda x: len(P & adj[x]))
+        else:
+            u = None
+
+        # Itera sui nodi candidati
+        for v in list(P-adj[u] if u else set()):  
+            # Aggiorna i valori di P e X
+            new_C = C + [v]
+            new_P = P & adj[v]
+            new_X = X & adj[v]
+
+            # Espande ricorsivamente
+            expand(new_C, new_P, new_X)
+
+            # Sposta v da P a X (implementa il backtracking)
+            P.remove(v)
+            X.add(v)
+        
+        if not P and not X:
+            # Se P e X sono vuoti, aggiungi la clique corrente a clique_massimali
+            clique_massimali.append(C)
+
+    # Avvia l'espansione con la lista vuota come clique corrente, candidati iniziali e nessun nodo escluso
+    expand([], candidati_iniziali, set())
+
+    # Restituisce la lista delle clique massimali e il numero di chiamate ricorsive
+    return clique_massimali, num_chiamate
