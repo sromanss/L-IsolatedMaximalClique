@@ -2,24 +2,80 @@ import time
 import csv
 import networkx as nx
 import os
+import random
 from openpyxl import Workbook
 from openpyxl.styles import Font
 from openpyxl import load_workbook
 import algoritmi as alg
 
-def esegui_test(percorso_grafo, valori_L, euristiche, ripetizioni, cartella_output="risultati"):
+#**********************************************************************************************************
+# * Funzione per generare un grafo secondo il modello G_{n,f,p} *
+#**********************************************************************************************************
+def generate_feature_graph(n, f, p):
+    """
+    Genera un grafo secondo il modello G_{n,f,p}
+    n: numero di nodi
+    f: numero di features
+    p: probabilità che un nodo abbia una feature
+    """
+    G = nx.Graph()
+    G.add_nodes_from(range(n))
     
+    # Genera le feature per ogni nodo
+    node_features = {i: set() for i in range(n)}
+    for node in range(n):
+        for feature in range(f):
+            # genera un numero casuale tra 0 e 1; se è minore di p, aggiungi la feature al nodo
+            if random.random() < p:
+                node_features[node].add(feature)
+    
+    # Crea cliques tra nodi che condividono features
+    for feature in range(f):
+        # Trova tutti i nodi che hanno questa feature
+        nodes_with_feature = [node for node, features in node_features.items() if feature in features]
+        # Crea una clique tra questi nodi
+        for i in range(len(nodes_with_feature)):
+            for j in range(i+1, len(nodes_with_feature)):
+                G.add_edge(nodes_with_feature[i], nodes_with_feature[j])
+    
+    return G
+#**********************************************************************************************************
+# * Funzione per analizzare il grafo *
+#**********************************************************************************************************
+def analyze_graph(G):
+    """
+    Calcola diverse metriche del grafo
+    """
+    metrics = {
+        'nodes': G.number_of_nodes(),
+        'edges': G.number_of_edges(),
+        'density': nx.density(G)
+        
+    }
+    return metrics
+#**********************************************************************************************************
+# * Funzione per eseguire i test su un grafo generato *
+#**********************************************************************************************************
+
+def esegui_test_generato(n, f, p, valori_L, euristiche, ripetizioni, cartella_output="risultati_generati"):
+    """
+    Esegue i test su un grafo generato secondo il modello G_{n,f,p}
+    """
     # Crea la cartella di output se non esiste
     if not os.path.exists(cartella_output):
         os.makedirs(cartella_output)
+        
+    # Genera il grafo
+    print(f"Generazione del grafo con parametri: n={n}, f={f}, p={p}")
+    G = generate_feature_graph(n, f, p)
+    metrics = analyze_graph(G)
+    print(f"Grafo generato: nodi={metrics['nodes']}, archi={metrics['edges']}, densità={metrics['density']:.4f}")
     
-    # Carica il grafo
-    print(f"Caricamento del grafo: {percorso_grafo}")
-    G = nx.read_edgelist(percorso_grafo, comments="%")
-    print(f"Grafo caricato: nodi={len(G)}, archi={G.number_of_edges()}")
+    # Nome grafo per identificazione
+    nome_grafo = f"G_{n}_{f}_{p}"
     
     # Prepara il file CSV per i risultati
-    nome_file_csv = os.path.join(cartella_output, "risultati_test.csv")
+    nome_file_csv = os.path.join(cartella_output, f"risultati_test_{nome_grafo}.csv")
     with open(nome_file_csv, 'w', newline='') as file_csv:
         writer = csv.writer(file_csv)
         writer.writerow(["L", "Euristica", "Tempo_Medio", "Chiamate_Ricorsive_Medie", "Clique_Trovate"])
@@ -48,7 +104,6 @@ def esegui_test(percorso_grafo, valori_L, euristiche, ripetizioni, cartella_outp
                         # Approccio con euristiche
                         clique_isolate, num_chiamate = alg.trova_clique_massimali_L_isolated2(G, L, euristica)
                     
-                    
                     # Registra il tempo
                     fine = time.time()
                     tempo_esecuzione = fine - inizio
@@ -73,19 +128,17 @@ def esegui_test(percorso_grafo, valori_L, euristiche, ripetizioni, cartella_outp
     print(f"Risultati salvati in {nome_file_csv}")
     
     # Genera i grafici
-    crea_grafici(nome_file_csv, cartella_output, percorso_grafo)
+    crea_grafici(nome_file_csv, cartella_output, nome_grafo, G, metrics)
 
-def get_graph_name(path):
-    """Estrae il nome del grafo dal percorso"""
-    filename = os.path.basename(path)
-    if filename.startswith('out.'):
-        return filename[4:]  # Rimuove 'out.' dal nome
-    return filename
+# **********************************************************************************************************
+# * Funzione per la creazione dei grafici e salvataggio in Excel *
+# **********************************************************************************************************
 
-def crea_grafici(file_csv, cartella_output, percorso_grafo):
-    """Crea il file Excel con i risultati del test"""
-    excel_path = os.path.join(cartella_output, "TempiEsecuzione.xlsx")
-    nome_grafo = get_graph_name(percorso_grafo)
+def crea_grafici(file_csv, cartella_output, nome_grafo, G, metrics):
+    """
+    Crea il file Excel con i risultati del test
+    """
+    excel_path = os.path.join(cartella_output, "TempiEsecuzione_Generati.xlsx")
     
     # Verifica se il file Excel esiste già
     if os.path.exists(excel_path):
@@ -131,21 +184,17 @@ def crea_grafici(file_csv, cartella_output, percorso_grafo):
         dati_organizzati[L][e]['clique'] = clique[i]
 
     # Scrivi intestazione con info grafo
-    G = nx.read_edgelist(percorso_grafo, comments="%")
-    ws_data[f'A{row_start}'] = f"GRAFO CON N={len(G)} E M={G.number_of_edges()}; Nome networkx: {nome_grafo}"
-    ws_data[f'A{row_start}'].font = Font(bold=True, color="008000")  # Verde (codice RGB), in modo da riconoscere i nuovi dati da quelli vecchi
+    ws_data[f'A{row_start}'] = f"GRAFO GENERATO {nome_grafo} CON N={metrics['nodes']}, M={metrics['edges']}, DENSITÀ={metrics['density']:.4f}"
+    ws_data[f'A{row_start}'].font = Font(bold=True, color="008000")  # Verde (codice RGB)
     ws_data.merge_cells(f'A{row_start}:H{row_start}')
 
     # Intestazioni prima tabella (Tempi)
     ws_data[f'A{row_start+1}'] = 'L'
-    ws_data[f'B{row_start+1}'] = 'Euristica 0'
-    ws_data[f'C{row_start+1}'] = 'Euristica 1'
-    ws_data[f'D{row_start+1}'] = 'Euristica 2'
-    ws_data[f'E{row_start+1}'] = 'Euristica 3'
-    ws_data[f'F{row_start+1}'] = 'Euristica 4'
+    for i, e in enumerate(euristiche_uniche):
+        ws_data[f'{chr(66+i)}{row_start+1}'] = f'Euristica {e}'
     
     # Applica il grassetto alle intestazioni
-    for col in range(1, 7):
+    for col in range(1, 2+len(euristiche_uniche)):
         ws_data[f'{chr(64+col)}{row_start+1}'].font = Font(bold=True)
 
     # Riempi la prima tabella (Tempi)
@@ -153,7 +202,7 @@ def crea_grafici(file_csv, cartella_output, percorso_grafo):
     for L in L_unici:
         ws_data[f'A{row}'] = L
         for i, e in enumerate(euristiche_uniche):
-            ws_data[f'{chr(65+i)}{row}'] = dati_organizzati[L][e]['tempo']
+            ws_data[f'{chr(66+i)}{row}'] = dati_organizzati[L][e]['tempo']
         row += 1
 
     # Intestazioni seconda tabella (Chiamate ricorsive)
@@ -171,10 +220,10 @@ def crea_grafici(file_csv, cartella_output, percorso_grafo):
     for L in L_unici:
         ws_data[f'{chr(65+col_offset)}{row}'] = L
         for i, e in enumerate(euristiche_uniche):
-            ws_data[f'{chr(65+col_offset+i)}{row}'] = dati_organizzati[L][e]['chiamate']
+            ws_data[f'{chr(65+col_offset+1+i)}{row}'] = dati_organizzati[L][e]['chiamate']
         row += 1
     
-     # Intestazioni terza tabella (Clique trovate)
+    # Intestazioni terza tabella (Clique trovate)
     col_offset = 16  # Aumentato offset per la nuova tabella
     ws_data[f'{chr(65+col_offset)}{row_start+1}'] = 'L'
     for i, e in enumerate(euristiche_uniche):
@@ -211,43 +260,58 @@ def crea_grafici(file_csv, cartella_output, percorso_grafo):
     
     print(f"\nRisultati salvati in Excel: {excel_path}")
 
-if __name__ == "__main__":
+# **********************************************************************************************************
+# * Funzione principale per l'analisi sperimentale *
+# ********************************************************************************************************
+def run_experimental_analysis(cartella_output="risultati_sperimentali"):
+    """
+    Esegue l'analisi sperimentale completa seguendo il formato del primo codice
+    """
+    if not os.path.exists(cartella_output):
+        os.makedirs(cartella_output)
     
-    # Parametri da testare
-    grafi = [
-        "C:/Users/simon/Downloads/out.ucidata-zachary",                         #n=34, m=78
-        "C:/Users/simon/Downloads/out.subelj_euroroad_euroroad",                #n=1174, m=1417
-        "C:/Users/simon/Downloads/out.petster-hamster-household",               #n=921, m=4032
-        "C:/Users/simon/Downloads/out.opsahl-powergrid",                        #n=4941, m=6594
-        "C:/Users/simon/Downloads/out.loc-brightkite_edges",                    #n=58228, m=214078
-        "C:/Users/simon/Downloads/out.petster-cat-household",                   #n=105138, m=494858
-        "C:/Users/simon/Downloads/out.loc-gowalla_edges",                       #196591, m=950327
-        "C:/Users/simon/Downloads/out.livemocha",                               #n=104103, m=2193083
-        "C:/Users/simon/Downloads/out.petster-dog-household",                   #n=260390, m=2148179
-        "C:/Users/simon/Downloads/out.roadNet-CA"                              #n=1965206, m=2766366
+    # Definizione dei valori per ogni parametro
+    n_values = [10, 100, 200]
+    f_values = [5, 10, 20]
+    p_values = [0.1, 0.25, 0.5]
+    
+    # Genera tutte le possibili combinazioni
+    configurazioni = [
+        {'n': n, 'f': f, 'p': p}
+        for n in n_values
+        for f in f_values
+        for p in p_values
     ]
-    valori_L =  list(range(1, 11)) + [20, 30]   # Valori di L da testare  
-    euristiche = [2]
     
-    # Ciclo su tutti i grafi
-    for grafo in grafi:
+    valori_L = [1, 2, 3, 5, 10]  # Valori di L da testare  
+    euristiche = [0, 1, 2, 3, 4]    # Euristiche da testare
+    ripetizioni = 10              # Numero di ripetizioni per calcolare la media
+    
+    # Ciclo su tutte le configurazioni
+    for config in configurazioni:
+        n, f, p = config['n'], config['f'], config['p']
         print("\n" + "="*80)
-        print(f"Iniziando test su grafo: {get_graph_name(grafo)}")
+        print(f"Iniziando test su grafo generato con n={n}, f={f}, p={p}")
         print("="*80 + "\n")
         
         try:
             # Esegui i test
-            esegui_test(
-                percorso_grafo=grafo,
+            esegui_test_generato(
+                n=n,
+                f=f,
+                p=p,
                 valori_L=valori_L,
                 euristiche=euristiche,
-                ripetizioni=1,
-                cartella_output="risultati_test"
+                ripetizioni=ripetizioni,
+                cartella_output=cartella_output
             )
         except Exception as e:
-            print(f"Errore durante l'elaborazione del grafo {get_graph_name(grafo)}:")
+            print(f"Errore durante l'elaborazione del grafo G_{n}_{f}_{p}:")
             print(f"  {str(e)}")
-            print("Passando al grafo successivo...\n")
+            print("Passando alla configurazione successiva...\n")
             continue
             
-        print(f"\nCompletato test su grafo: {get_graph_name(grafo)}\n")
+        print(f"\nCompletato test su grafo G_{n}_{f}_{p}\n")
+
+if __name__ == "__main__":
+    run_experimental_analysis()
