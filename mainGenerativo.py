@@ -265,7 +265,7 @@ def crea_grafici(file_csv, cartella_output, nome_grafo, G, metrics):
 # ********************************************************************************************************
 def run_experimental_analysis(cartella_output="risultati_sperimentali"):
     """
-    Esegue l'analisi sperimentale completa seguendo il formato del primo codice
+    Esegue l'analisi sperimentale completa
     """
     if not os.path.exists(cartella_output):
         os.makedirs(cartella_output)
