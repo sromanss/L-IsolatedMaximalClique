@@ -96,10 +96,13 @@ def esegui_test_generato(n, f, p, valori_L, euristiche, ripetizioni, cartella_ou
                     # Misura il tempo di esecuzione
                     inizio = time.time()
                     
-                    if euristica == 0:
+                    if euristica == -1:
+                        # Numero totale di clique massimali (Bron-Kerbosch)
+                        cliques, num_chiamate = alg.trova_clique_massimali3(G)    
+                    elif euristica == 0:
                         # Approccio trova e filtra
                         cliques, num_chiamate = alg.trova_clique_massimali3(G)
-                        clique_isolate = alg.filtra_clique_isolate(G, cliques, L)
+                        clique_isolate = alg.filtra_clique_isolate(G, cliques, L)  
                     else:
                         # Approccio con euristiche
                         clique_isolate, num_chiamate = alg.trova_clique_massimali_L_isolated2(G, L, euristica)
@@ -114,7 +117,10 @@ def esegui_test_generato(n, f, p, valori_L, euristiche, ripetizioni, cartella_ou
                     
                     # Usa l'ultimo valore per il conteggio delle clique
                     if i == ripetizioni - 1:
-                        conteggio_clique = len(clique_isolate)
+                        if euristica == -1:
+                            conteggio_clique = len(cliques)
+                        else:
+                            conteggio_clique = len(clique_isolate)
                 
                 # Calcola le medie
                 tempo_medio = sum(tempi) / len(tempi)
@@ -271,47 +277,88 @@ def run_experimental_analysis(cartella_output="risultati_sperimentali"):
         os.makedirs(cartella_output)
     
     # Definizione dei valori per ogni parametro
-    n_values = [10, 100, 200]
-    f_values = [5, 10, 20]
-    p_values = [0.1, 0.25, 0.5]
+    n_values = [10, 60, 120, 240, 440]              # Numero di nodi
+    f_values = [5, 10, 20, 40, 80]                      # Numero di features
+    p_values = [0.025, 0.050, 0.075, 0.100, 0.125, 0.150, 0.175, 0.225]      # Probabilità che un nodo n abbia la feature f
+    l_values = [20, 40, 60, 80, 100]                         # Valori di L da testare
+    euristiche = [-1, 0, 1, 2, 3, 4]                        # Euristiche da testare
+    ripetizioni = 5                                    # Numero di ripetizioni per calcolare la media
     
-    # Genera tutte le possibili combinazioni
-    configurazioni = [
-        {'n': n, 'f': f, 'p': p}
-        for n in n_values
-        for f in f_values
-        for p in p_values
-    ]
+    # PRIMA COPPIA: -numero di cliques al variare di L (n fisso, f fisso, p fisso)
+    #               -running time al variare di L (n fisso, f fisso, p fisso)
+
+    # SECONDA COPPIA: -numero di cliques al variare di f (n fisso, p fisso, l fisso)
+    #                 -running time al variare di f (n fisso, p fisso, l fisso)
+
+    # TERZA COPPIA: -numero di cliques al variare di n (f fisso, p fisso, L fisso)
+    #               -running time al variare di n (f fisso, p fisso, L fisso)
+
+    # QUARTA COPPIA: -numero di cliques al variare di p (n fisso, f fisso, L fisso)
+    #                -running time al variare di p (n fisso, f fisso, L fisso)
     
-    valori_L = [1, 2, 3, 5, 10]  # Valori di L da testare  
-    euristiche = [0, 1, 2, 3, 4]    # Euristiche da testare
-    ripetizioni = 10              # Numero di ripetizioni per calcolare la media
-    
-    # Ciclo su tutte le configurazioni
-    for config in configurazioni:
-        n, f, p = config['n'], config['f'], config['p']
-        print("\n" + "="*80)
-        print(f"Iniziando test su grafo generato con n={n}, f={f}, p={p}")
-        print("="*80 + "\n")
-        
+    # Test 1: Variazione di L (n, f, p fissi)
+    print("\nTEST 1: Variazione di l (n=200, f=45, p=0.1)")
+    try:
+        esegui_test_generato(
+            n=200,          # fisso
+            f=45,           # fisso
+            p=0.1,        # fisso
+            valori_L=l_values,  # variabile
+            euristiche=euristiche,
+            ripetizioni=ripetizioni,
+            cartella_output=cartella_output
+        )
+    except Exception as e:
+        print(f"Errore durante test 1: {str(e)}")
+
+    # Test 2: Variazione di f (n, p, L fissi)
+    print("\nTEST 2: Variazione di f (n=200, p=0.1, L=40)")
+    for f in f_values:
         try:
-            # Esegui i test
             esegui_test_generato(
-                n=n,
-                f=f,
-                p=p,
-                valori_L=valori_L,
+                n=200,          # fisso
+                f=f,            # variabile
+                p=0.1,        # fisso
+                valori_L=[40],  # fisso
                 euristiche=euristiche,
                 ripetizioni=ripetizioni,
                 cartella_output=cartella_output
             )
         except Exception as e:
-            print(f"Errore durante l'elaborazione del grafo G_{n}_{f}_{p}:")
-            print(f"  {str(e)}")
-            print("Passando alla configurazione successiva...\n")
-            continue
-            
-        print(f"\nCompletato test su grafo G_{n}_{f}_{p}\n")
+            print(f"Errore durante test 2 con f={f}: {str(e)}")
 
+    # Test 3: Variazione di n (f, p, L fissi)
+    print("\nTEST 3: Variazione di n (f=45, p=0.1, L=40)")
+    for n in n_values:
+        try:
+            esegui_test_generato(
+                n=n,            # variabile
+                f=45,           # fisso
+                p=0.1,        # fisso
+                valori_L=[40],  # fisso
+                euristiche=euristiche,
+                ripetizioni=ripetizioni,
+                cartella_output=cartella_output
+            )
+        except Exception as e:
+            print(f"Errore durante test 3 con n={n}: {str(e)}")
+
+    
+    # Test 4: Variazione di p (n, f, L fissi)
+    print("\nTEST 4: Variazione di p (n=200, f=45, L=40)")
+    for p in p_values:
+        try:
+            esegui_test_generato(
+                n=200,          # fisso
+                f=45,           # fisso
+                p=p,            # variabile
+                valori_L=[40],  # fisso
+                euristiche=euristiche,
+                ripetizioni=ripetizioni,
+                cartella_output=cartella_output
+            )
+        except Exception as e:
+            print(f"Errore durante test 4 con p={p}: {str(e)}")
+        
 if __name__ == "__main__":
     run_experimental_analysis()
