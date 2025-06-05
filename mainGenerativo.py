@@ -277,10 +277,10 @@ def run_experimental_analysis(cartella_output="risultati_sperimentali"):
         os.makedirs(cartella_output)
     
     # Definizione dei valori per ogni parametro
-    n_values = [10, 60, 120, 240, 440]              # Numero di nodi
-    f_values = [5, 10, 20, 40, 80]                      # Numero di features
+    n_values = [10, 60, 110, 160, 210, 260, 310, 360, 410, 460, 510]              # Numero di nodi
+    f_values = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]                      # Numero di features
     p_values = [0.025, 0.050, 0.075, 0.100, 0.125, 0.150, 0.175, 0.225]      # Probabilità che un nodo n abbia la feature f
-    l_values = [20, 40, 60, 80, 100]                         # Valori di L da testare
+    l_values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 100]                         # Valori di L da testare
     euristiche = [-1, 0, 1, 2, 3, 4]                        # Euristiche da testare
     ripetizioni = 5                                    # Numero di ripetizioni per calcolare la media
     
@@ -295,7 +295,7 @@ def run_experimental_analysis(cartella_output="risultati_sperimentali"):
 
     # QUARTA COPPIA: -numero di cliques al variare di p (n fisso, f fisso, L fisso)
     #                -running time al variare di p (n fisso, f fisso, L fisso)
-    
+    """
     # Test 1: Variazione di L (n, f, p fissi)
     print("\nTEST 1: Variazione di l (n=200, f=45, p=0.1)")
     try:
@@ -310,7 +310,7 @@ def run_experimental_analysis(cartella_output="risultati_sperimentali"):
         )
     except Exception as e:
         print(f"Errore durante test 1: {str(e)}")
-
+    
     # Test 2: Variazione di f (n, p, L fissi)
     print("\nTEST 2: Variazione di f (n=200, p=0.1, L=40)")
     for f in f_values:
@@ -326,7 +326,7 @@ def run_experimental_analysis(cartella_output="risultati_sperimentali"):
             )
         except Exception as e:
             print(f"Errore durante test 2 con f={f}: {str(e)}")
-
+    
     # Test 3: Variazione di n (f, p, L fissi)
     print("\nTEST 3: Variazione di n (f=45, p=0.1, L=40)")
     for n in n_values:
@@ -343,7 +343,7 @@ def run_experimental_analysis(cartella_output="risultati_sperimentali"):
         except Exception as e:
             print(f"Errore durante test 3 con n={n}: {str(e)}")
 
-    
+    """
     # Test 4: Variazione di p (n, f, L fissi)
     print("\nTEST 4: Variazione di p (n=200, f=45, L=40)")
     for p in p_values:
@@ -353,12 +353,12 @@ def run_experimental_analysis(cartella_output="risultati_sperimentali"):
                 f=45,           # fisso
                 p=p,            # variabile
                 valori_L=[40],  # fisso
-                euristiche=euristiche,
+                euristiche=euristiche,  # tutte le euristiche
                 ripetizioni=ripetizioni,
                 cartella_output=cartella_output
             )
         except Exception as e:
             print(f"Errore durante test 4 con p={p}: {str(e)}")
-        
+       
 if __name__ == "__main__":
     run_experimental_analysis()

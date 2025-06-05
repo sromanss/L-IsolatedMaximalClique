@@ -15,7 +15,7 @@ def esegui_test(percorso_grafo, valori_L, euristiche, ripetizioni, cartella_outp
     
     # Carica il grafo
     print(f"Caricamento del grafo: {percorso_grafo}")
-    G = nx.read_edgelist(percorso_grafo, comments="%")
+    G = nx.read_edgelist(percorso_grafo, comments="%", data=False)
     print(f"Grafo caricato: nodi={len(G)}, archi={G.number_of_edges()}")
     
     # Prepara il file CSV per i risultati
@@ -215,19 +215,24 @@ if __name__ == "__main__":
     
     # Parametri da testare
     grafi = [
-        "C:/Users/simon/Downloads/out.ucidata-zachary",                         #n=34, m=78
-        "C:/Users/simon/Downloads/out.subelj_euroroad_euroroad",                #n=1174, m=1417
-        "C:/Users/simon/Downloads/out.petster-hamster-household",               #n=921, m=4032
-        "C:/Users/simon/Downloads/out.opsahl-powergrid",                        #n=4941, m=6594
-        "C:/Users/simon/Downloads/out.loc-brightkite_edges",                    #n=58228, m=214078
-        "C:/Users/simon/Downloads/out.petster-cat-household",                   #n=105138, m=494858
-        "C:/Users/simon/Downloads/out.loc-gowalla_edges",                       #196591, m=950327
-        "C:/Users/simon/Downloads/out.livemocha",                               #n=104103, m=2193083
-        "C:/Users/simon/Downloads/out.petster-dog-household",                   #n=260390, m=2148179
-        "C:/Users/simon/Downloads/out.roadNet-CA"                              #n=1965206, m=2766366
+        #"C:/Users/simon/Downloads/out.ucidata-zachary",                         #n=34, m=78
+        #"C:/Users/simon/Downloads/out.subelj_euroroad_euroroad",                #n=1174, m=1417
+        #"C:/Users/simon/Downloads/out.petster-hamster-household",               #n=921, m=4032
+        #"C:/Users/simon/Downloads/out.opsahl-powergrid",                        #n=4941, m=6594
+        #"C:/Users/simon/Downloads/out.loc-brightkite_edges",                    #n=58228, m=214078
+        #"C:/Users/simon/Downloads/out.petster-cat-household",                   #n=105138, m=494858
+        #"C:/Users/simon/Downloads/out.loc-gowalla_edges",                       #196591, m=950327
+        #"C:/Users/simon/Downloads/out.livemocha",                               #n=104103, m=2193083
+        #"C:/Users/simon/Downloads/out.petster-dog-household",                   #n=260390, m=2148179
+        #"C:/Users/simon/Downloads/out.roadNet-CA",                               #n=1965206, m=2762980   
+        #"C:/Users/simon/Downloads/out.com-youtube",
+        #"C:/Users/simon/Downloads/out.as-skitter",
+        #"C:/Users/simon/Downloads/out.roadNet-PA",                              
+        "C:/Users/simon/Downloads/out.wikiconflict"
+        
     ]
     valori_L =  list(range(1, 11)) + [20, 30]   # Valori di L da testare  
-    euristiche = [2]
+    euristiche = [0, 1, 2, 3, 4]  # Euristiche da testare (0-4)
     
     # Ciclo su tutti i grafi
     for grafo in grafi:
