@@ -495,3 +495,118 @@ def trova_clique_massimali3(G):
 
     # Restituisce la lista delle clique massimali e il numero di chiamate ricorsive
     return clique_massimali, num_chiamate
+
+
+# ************************************************************************************************************
+
+def trova_clique_massimali_L_isolated3(G, L, euristica):
+    # Contatore locale per le chiamate ricorsive
+    num_chiamate = 0
+
+    # Controlla se il grafo è vuoto
+    if len(G) == 0:
+        print("Il grafo è vuoto. Nessuna clique trovata.")
+        return [], 0
+    
+    # Pre-calcolo dei gradi e della cache
+    gradi = {node: G.degree[node] for node in G}
+    cache_D = {}
+    
+    # Crea un dizionario di adiacenza, dove ogni nodo è associato ai suoi vicini
+    adj = {u: set(G[u]) for u in G}
+
+    # Inizializza i candidati iniziali con tutti i nodi del grafo
+    candidati_iniziali = set(G)
+
+    # Lista per memorizzare le clique massimali L-isolated
+    clique_isolated = []
+
+    # Funzione ottimizzata per calcolare AE(C)
+    def calcola_AE(somma_gradi, archi_interni, archi_verso_P):
+        return somma_gradi - archi_interni - archi_verso_P
+
+    # Funzione ottimizzata per calcolare D con caching
+    def calcola_D(C, P, euristica):
+        key = (len(C), len(P))
+        if key in cache_D:
+            return cache_D[key]
+
+        result = 0
+        if euristica == 1:
+            result = len(P)
+        elif euristica == 2:
+            grado_massimo = max(gradi[v] for v in P)
+            result = min(max(0, grado_massimo - len(C) + 1), len(P))
+        elif euristica == 3:
+            gradi_ordinati = sorted((gradi[v] - len(C) for v in P), reverse=True)
+            for i, grado in enumerate(gradi_ordinati, start=1):
+                if grado < i - 1:
+                    result = i - 1
+                    break
+            result = len(gradi_ordinati)
+        elif euristica == 4:
+            L = [gradi[v] - len(C) for v in P]
+            grado_max = max(L) if L else 0
+            C_count = [0] * (grado_max + 1)
+            for grado in L:
+                C_count[grado] += 1
+            somma = C_count[grado_max]
+            for grado in range(grado_max-1, -1, -1):
+                if grado < somma - 1:
+                    result = somma
+                    break
+                somma += C_count[grado]
+            else:
+                result = somma
+        else:
+            raise ValueError("Euristica non valida per il calcolo di D.")
+
+        cache_D[key] = result
+        return result
+
+    def expand_optimized(C, P, X, somma_gradi):
+        nonlocal num_chiamate
+        num_chiamate += 1
+
+        # Early pruning
+        if len(P) == 0:
+            if len(X) == 0:
+                archi_interni_finale = len(C) * (len(C) - 1)
+                AE_C_finale = somma_gradi - archi_interni_finale
+                if AE_C_finale <= len(C) * L:
+                    clique_isolated.append(C[:])
+            return
+
+        # Calcoli base
+        archi_interni = len(C) * (len(C) - 1)
+        archi_verso_P = sum(len(adj[u] & P) for u in C)
+        AE_C = calcola_AE(somma_gradi, archi_interni, archi_verso_P)
+
+
+        D = calcola_D(C, P, euristica)
+
+        if AE_C + len(C)*len(P) - L*len(C) > D*(L + len(C)):
+            return
+
+        # Ottimizzazione scelta pivot
+        if len(P) < 10:
+            u = next(iter(P))
+        else:
+            u = max(P, key=lambda x: len(P & adj[x]))
+
+        # Itera sui nodi candidati
+        for v in list(P - adj[u] if u else set()):
+            new_C = C + [v]
+            new_P = P & adj[v]
+            new_X = X & adj[v]
+            new_somma_gradi = somma_gradi + gradi[v]
+
+            expand_optimized(new_C, new_P, new_X, new_somma_gradi)
+
+            P.remove(v)
+            X.add(v)
+
+    # Avvia l'espansione con la configurazione iniziale
+    expand_optimized([], candidati_iniziali, set(), 0)
+
+    return clique_isolated, num_chiamate
